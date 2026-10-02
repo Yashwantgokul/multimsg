@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Channel {
+  WHATSAPP
+  INSTAGRAM
+  MESSENGER
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum DraftStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  SENT
+}
+
+model ChannelAccount {
+  id              String         @id @default(cuid())
+  channel         Channel
+  externalAccountId String
+  tokenRef        String
+  conversations   Conversation[]
+
+  @@unique([channel, externalAccountId])
+}
+
+model Contact {
+  id            String         @id @default(cuid())
+  displayName   String?
+  conversations Conversation[]
+}
+
+model Conversation {
+  id               String         @id @default(cuid())
+  channelAccountId String
+  contactId        String
+  externalThreadId String?
+  updatedAt        DateTime       @updatedAt
+
+  account ChannelAccount @relation(fields: [channelAccountId], references: [id])
+  contact Contact        @relation(fields: [contactId], references: [id])
+  messages Message[]
+  tasks    AgentTask[]
+}
+
+model Message {
+  id                String           @id @default(cuid())
+  conversationId    String
+  externalMessageId String
+  direction         MessageDirection
+  text              String?
+  createdAt         DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@unique([conversationId, externalMessageId])
+}
+
+model AgentTask {
+  id             String       @id @default(cuid())
+  conversationId String
+  status         String       @default("QUEUED")
+  sessionId      String?
+  createdAt      DateTime     @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  drafts       ReplyDraft[]
+}
+
+model ReplyDraft {
+  id        String      @id @default(cuid())
+  taskId    String
+  body      String
+  status    DraftStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime    @default(now())
+
+  task     AgentTask @relation(fields: [taskId], references: [id])
+  approval Approval?
+}
+
+model Approval {
+  id        String   @id @default(cuid())
+  draftId   String   @unique
+  decision  String
+  decidedAt DateTime @default(now())
+
+  draft ReplyDraft @relation(fields: [draftId], references: [id])
+}
+
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  providerEventId String    @unique
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+}
