@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -n \"SERVER,WEB\" -c \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:web\"",
     "dev:server": "npm run dev --workspace=apps/server",
     "dev:web": "npm run dev --workspace=apps/web",
     "db:push": "npx prisma db push",
